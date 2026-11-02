@@ -1,6 +1,7 @@
 # Coolify stack: point the resource's "Docker Compose Location" at /docker-compose.coolify.yml.
 # On first boot config.example.yaml is copied to the persistent config volume as config.yaml,
-# with the placeholder client API keys replaced by the generated SERVICE_PASSWORD_64_APIKEY.
+# with the placeholder client API keys replaced by the generated SERVICE_PASSWORD_64_APIKEY
+# and plugins enabled (loaded from the persistent plugins volume).
 # The API is only reachable over Tailscale: the proxy shares the tailscale sidecar's network
 # and is served at http://<TS_HOSTNAME>:8317 on the tailnet. No public port or domain.
 services:
@@ -32,6 +33,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # SOURCE_COMMIT is set by Coolify when "Include Source Commit in Build" is enabled.
+        VERSION: ${SOURCE_COMMIT:-dev}
+        COMMIT: ${SOURCE_COMMIT:-none}
     network_mode: service:tailscale
     depends_on:
       tailscale:
@@ -44,7 +49,9 @@ services:
     command:
       - |
         if [ ! -f data/config.yaml ]; then
-          sed -e "s|your-api-key-1|$$API_KEY|" -e '/your-api-key-[23]/d' config.example.yaml > data/config.yaml
+          sed -e "s|your-api-key-1|$$API_KEY|" -e '/your-api-key-[23]/d' \
+            -e '/^plugins:/,/^  enabled:/s/enabled: false/enabled: true/' \
+            config.example.yaml > data/config.yaml
         fi
         exec ./CLIProxyAPI -config data/config.yaml
     volumes:
