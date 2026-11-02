@@ -1,13 +1,36 @@
 # Coolify stack: point the resource's "Docker Compose Location" at /docker-compose.coolify.yml.
 # On first boot config.example.yaml is copied to the persistent config volume as config.yaml,
 # with the placeholder client API keys replaced by the generated SERVICE_PASSWORD_64_APIKEY.
+# The API is only reachable over Tailscale: the proxy shares the tailscale sidecar's network
+# and is served at http://<TS_HOSTNAME>:8317 on the tailnet. No public port or domain.
 services:
+  tailscale:
+    image: tailscale/tailscale:v1.104.4
+    hostname: ${TS_HOSTNAME:-cliproxy}
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY:?Set TS_AUTHKEY to a Tailscale auth key}
+      - TS_HOSTNAME=${TS_HOSTNAME:-cliproxy}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+
   cli-proxy-api:
     build:
       context: .
       dockerfile: Dockerfile
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_started
+        restart: true
     environment:
-      - SERVICE_FQDN_CLIPROXY_8317
       - MANAGEMENT_PASSWORD=${SERVICE_PASSWORD_MANAGEMENT}
       - API_KEY=${SERVICE_PASSWORD_64_APIKEY}
     entrypoint: ["/bin/sh", "-c"]
@@ -25,6 +48,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  tailscale-state:
   cliproxy-config:
   cliproxy-auths:
   cliproxy-logs:
