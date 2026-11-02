@@ -1,0 +1,31 @@
+# Coolify stack: point the resource's "Docker Compose Location" at /docker-compose.coolify.yml.
+# On first boot config.example.yaml is copied to the persistent config volume as config.yaml,
+# with the placeholder client API keys replaced by the generated SERVICE_PASSWORD_64_APIKEY.
+services:
+  cli-proxy-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_FQDN_CLIPROXY_8317
+      - MANAGEMENT_PASSWORD=${SERVICE_PASSWORD_MANAGEMENT}
+      - API_KEY=${SERVICE_PASSWORD_64_APIKEY}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -f data/config.yaml ]; then
+          sed -e "s|your-api-key-1|$$API_KEY|" -e '/your-api-key-[23]/d' config.example.yaml > data/config.yaml
+        fi
+        exec ./CLIProxyAPI -config data/config.yaml
+    volumes:
+      - cliproxy-config:/CLIProxyAPI/data
+      - cliproxy-auths:/root/.cli-proxy-api
+      - cliproxy-logs:/CLIProxyAPI/logs
+      - cliproxy-plugins:/CLIProxyAPI/plugins
+    restart: unless-stopped
+
+volumes:
+  cliproxy-config:
+  cliproxy-auths:
+  cliproxy-logs:
+  cliproxy-plugins:
