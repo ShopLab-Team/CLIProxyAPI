@@ -8,7 +8,7 @@ services:
     image: tailscale/tailscale:v1.104.4
     hostname: ${TS_HOSTNAME:-cliproxy}
     environment:
-      - TS_AUTHKEY=${TS_AUTHKEY:?Set TS_AUTHKEY to a Tailscale auth key}
+      - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_HOSTNAME=${TS_HOSTNAME:-cliproxy}
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=false
