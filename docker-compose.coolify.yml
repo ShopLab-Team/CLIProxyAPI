@@ -19,6 +19,13 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    healthcheck:
+      test: ["CMD", "tailscale", "--socket=/tmp/tailscaled.sock", "status"]
+      interval: 30m
+      timeout: 10s
+      retries: 1
+      start_period: 30s
+      start_interval: 5s
     restart: unless-stopped
 
   cli-proxy-api:
@@ -45,6 +52,14 @@ services:
       - cliproxy-auths:/root/.cli-proxy-api
       - cliproxy-logs:/CLIProxyAPI/logs
       - cliproxy-plugins:/CLIProxyAPI/plugins
+    healthcheck:
+      # The image has no curl; bash /dev/tcp issues the GET /healthz request.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8317 && printf 'GET /healthz HTTP/1.0\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200'"]
+      interval: 30m
+      timeout: 10s
+      retries: 1
+      start_period: 30s
+      start_interval: 5s
     restart: unless-stopped
 
 volumes:
